@@ -23,6 +23,16 @@ export const getContactById = async id => {
 	}
 	return data[oneItem];
 };
+export const updateContact = async (id, data) => {
+	const allData = await listContacts();
+	const index = allData.findIndex(item => item.id === id);
+	if (index === -1) {
+		return null;
+	}
+	allData[index] = { ...allData[index], ...data };
+	fs.writeFile(p, JSON.stringify(allData, null, 2));
+	return allData[index];
+};
 export const removeContact = async id => {
 	const data = await listContacts();
 	const indexElement = data.findIndex(item => item.id === id);
