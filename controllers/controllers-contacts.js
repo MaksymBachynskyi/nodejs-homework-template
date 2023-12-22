@@ -1,64 +1,75 @@
 import { HttpError } from '../helpers/HttpError.js';
-import * as contactsService from '../models/contacts.js';
-import { contactsAddSchema, updateSchema } from '../schemas/contacts.schema.js';
 
-export const getAll = async (req, res, next) => {
-	try {
-		const list = await contactsService.listContacts();
-		res.status(200).json(list);
-	} catch (error) {
-		next(error);
-	}
+import { Contact } from '../models/contacts.js';
+import {
+	contactsAddSchema,
+	updateSchema,
+	favoriteSchema,
+} from '../models/contacts.js';
+import { decWrap } from '../decorators/decoratorWrap.js';
+
+const getAll = async (req, res) => {
+	const result = await Contact.find({});
+	res.status(200).json(result);
 };
-export const getById = async (req, res, next) => {
-	try {
-		const { id } = req.params;
-		const element = await contactsService.getContactById(id);
-		if (!element) {
-			throw HttpError(404);
-		}
-		res.status(200).json(element);
-	} catch (error) {
-		next(error);
+
+const getById = async (req, res) => {
+	const { id } = req.params;
+	const element = await Contact.findById(id);
+	if (!element) {
+		throw HttpError(404);
 	}
+	res.status(200).json(element);
 };
-export const addContact = async (req, res, next) => {
-	try {
-		const { error } = contactsAddSchema.validate(req.body);
-		if (error) {
-			throw HttpError(400, error.message);
-		}
-		const newContact = await contactsService.addContact(req.body);
-		res.status(201).json(newContact);
-	} catch (error) {
-		next(error);
+
+const addContact = async (req, res) => {
+	const { error } = contactsAddSchema.validate(req.body);
+	if (error) {
+		throw HttpError(400, error.message);
 	}
+	const newContact = await Contact.create(req.body);
+	res.status(201).json(newContact);
 };
-export const deleteContact = async (req, res, next) => {
-	try {
-		const { id } = req.params;
-		const element = contactsService.removeContact(id);
-		if (!element) {
-			throw HttpError(404);
-		}
-		res.status(200).json({ message: 'contact deleted' });
-	} catch (error) {
-		next(error);
+
+const deleteContact = async (req, res) => {
+	const { id } = req.params;
+	const element = await Contact.findByIdAndDelete(id);
+	if (!element) {
+		throw HttpError(404);
 	}
+	res.status(200).json({ message: 'contact deleted' });
 };
-export const updateContact = async (req, res, next) => {
-	try {
-		const { error } = updateSchema.validate(req.body);
-		if (error) {
-			throw HttpError(400, error.message);
-		}
-		const { id } = req.params;
-		const newContact = await contactsService.updateContact(id, req.body);
-		if (!newContact) {
-			throw HttpError(404);
-		}
-		res.status(200).json(newContact);
-	} catch (error) {
-		next(error);
+
+const updateFavoriteStatus = async (req, res) => {
+	const { error } = favoriteSchema.validate(req.body);
+	if (error) {
+		throw HttpError(400, error.message);
 	}
+	const { id } = req.params;
+	const newContact = await Contact.findByIdAndUpdate(id, req.body);
+	if (!newContact) {
+		throw HttpError(404);
+	}
+	res.status(200).json(newContact);
+};
+
+const updateContact = async (req, res) => {
+	const { error } = updateSchema.validate(req.body);
+	if (error) {
+		throw HttpError(400, error.message);
+	}
+	const { id } = req.params;
+	const newContact = await Contact.findByIdAndUpdate(id, req.body);
+	if (!newContact) {
+		throw HttpError(404);
+	}
+	res.status(200).json(newContact);
+};
+export default {
+	geAllContacts: decWrap(getAll),
+	getContactById: decWrap(getById),
+	createContact: decWrap(addContact),
+	updateOneContact: decWrap(updateContact),
+	deleteOneContact: decWrap(deleteContact),
+	updateStatus: decWrap(updateFavoriteStatus),
 };
