@@ -1,45 +1,73 @@
-import path from 'path';
-import * as fs from 'fs/promises';
-import { nanoid } from 'nanoid';
+import { Schema, model } from 'mongoose';
+import Joi from 'joi';
 
-const p = path.resolve('models', 'contacts.json');
+const contactSchema = new Schema(
+	{
+		name: {
+			type: String,
+			required: [true, 'Set name for contact'],
+		},
+		email: {
+			type: String,
+		},
+		phone: {
+			type: String,
+			match: /^\d+$/,
+		},
+		favorite: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	{ versionKey: false, timestamps: true }
+);
 
-export const listContacts = async () => {
-	const data = await fs.readFile(p);
-	return JSON.parse(data);
-};
-export const addContact = async ({ name, email, phone }) => {
-	const data = { id: nanoid(), name, email, phone };
-	const allData = await listContacts();
-	allData.push(data);
-	fs.writeFile(p, JSON.stringify(allData, null, 2));
-	return data;
-};
-export const getContactById = async id => {
-	const data = await listContacts();
-	const oneItem = data.findIndex(item => item.id === id);
-	if (oneItem === -1) {
-		return null;
-	}
-	return data[oneItem];
-};
-export const updateContact = async (id, data) => {
-	const allData = await listContacts();
-	const index = allData.findIndex(item => item.id === id);
-	if (index === -1) {
-		return null;
-	}
-	allData[index] = { ...allData[index], ...data };
-	fs.writeFile(p, JSON.stringify(allData, null, 2));
-	return allData[index];
-};
-export const removeContact = async id => {
-	const data = await listContacts();
-	const indexElement = data.findIndex(item => item.id === id);
-	if (indexElement === -1) {
-		return null;
-	}
-	const [result] = data.splice(indexElement, 1);
-	fs.writeFile(p, JSON.stringify(data, null, 2));
-	return result;
-};
+contactSchema.post('save', (error, data, next) => {
+	error.status = 400;
+	next();
+});
+contactSchema.pre('findOneAndUpdate', function (next) {
+	this.options.new = true;
+	this.options.runValidators = true;
+	next();
+});
+contactSchema.post('findOneAndUpdate', (error, data, next) => {
+	error.status = 400;
+	next();
+});
+
+export const contactsAddSchema = Joi.object({
+	name: Joi.string()
+		.required()
+		.messages({ 'any.required': 'missing required name field' }),
+	email: Joi.string()
+		.email({
+			minDomainSegments: 2,
+			tlds: { allow: ['com', 'net'] },
+		})
+		.messages({ 'any.required': 'missing required email field' })
+		.required(),
+	phone: Joi.string()
+		.length(10)
+		.pattern(/^\d+$/)
+		.required()
+		.messages({ 'any.required': 'missing required phone field' }),
+
+	favorite: Joi.boolean,
+});
+
+export const updateSchema = Joi.object({
+	name: Joi.string(),
+	email: Joi.string().email({
+		minDomainSegments: 2,
+		tlds: { allow: ['com', 'net'] },
+	}),
+	phone: Joi.string().length(10).pattern(/^\d+$/),
+	favorite: Joi.boolean(),
+});
+
+export const favoriteSchema = Joi.object({
+	favorite: Joi.boolean().required(),
+});
+
+export const Contact = model('contact', contactSchema);
