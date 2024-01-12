@@ -1,11 +1,23 @@
 import { HttpError } from '../helpers/HttpError.js';
 import { userSingUpOrIn, User } from '../models/User.js';
 import { decWrap } from '../decorators/decoratorWrap.js';
+import fs from 'fs/promises';
+import gravatar from 'gravatar';
 import bcryptjs from 'bcryptjs';
 import 'dotenv/config';
 import jwt from 'jsonwebtoken';
+import path from 'path';
+import Jimp from 'jimp';
+import { write } from 'fs';
 
 const { JWT_SECRET } = process.env;
+
+const avatarPath = path.resolve('public', 'avatars');
+
+async function resize(p) {
+	const image = await Jimp.read(p);
+	image.resize(50, 50).write(avatarPath);
+}
 
 const singUp = async (req, res) => {
 	const { error } = userSingUpOrIn.validate(req.body);
@@ -13,13 +25,17 @@ const singUp = async (req, res) => {
 		throw HttpError(400, error.message);
 	}
 	const { email, password } = req.body;
+	const avatarURL = gravatar.url(email);
 	const user = await User.findOne({ email });
 	if (user) {
-		console.log(user);
 		throw HttpError(409, 'Email in use');
 	}
 	const paswrdHash = await bcryptjs.hash(password, 10);
-	const newUser = User.create({ ...req.body, password: paswrdHash });
+	const newUser = User.create({
+		...req.body,
+		password: paswrdHash,
+		avatarURL,
+	});
 	res.status(201).json({
 		user: {
 			email,
@@ -69,9 +85,24 @@ const singOut = async (req, res) => {
 	await User.findByIdAndUpdate(_id, { token: '' });
 	res.status(204).json({ message: 'No Content' });
 };
+const updateAvtr = async (req, res) => {
+	const { _id } = req.user;
+	const { path: oldPath, filename } = req.file;
+	const specificFileName = `${_id}_${filename}`;
+	const resultPath = path.join(avatarPath, specificFileName);
+	await fs.rename(oldPath, resultPath);
+	const avatarURL = path.join('avatars', specificFileName);
+	const a = await Jimp.read(resultPath, function (err, image) {
+		image.resize(250, 250).write(avatarPath + 'new.png');
+	});
+
+	const newAvatar = await User.findByIdAndUpdate(_id, { avatarURL });
+	res.json({ avatarURL });
+};
 export default {
 	singup: decWrap(singUp),
 	singin: decWrap(singIn),
 	getCrnt: decWrap(getCurrent),
 	singout: decWrap(singOut),
+	updateAvatar: decWrap(updateAvtr),
 };
