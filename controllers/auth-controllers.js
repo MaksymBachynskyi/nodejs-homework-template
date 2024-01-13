@@ -87,7 +87,11 @@ const singOut = async (req, res) => {
 };
 const updateAvtr = async (req, res) => {
 	const { _id } = req.user;
+	if (!req.file) {
+		throw HttpError(400, 'missing file');
+	}
 	const { path: oldPath, filename } = req.file;
+
 	const specificFileName = `${_id}_${filename}`;
 	const resultPath = path.join(avatarPath, specificFileName);
 	await fs.rename(oldPath, resultPath);
