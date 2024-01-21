@@ -22,7 +22,8 @@ const getAll = async (req, res) => {
 
 const getById = async (req, res) => {
 	const { id } = req.params;
-	const element = await Contact.findById(id);
+	const { _id } = req.user;
+	const element = await Contact.find({ _id: id, owner: _id });
 
 	if (!element) {
 		throw HttpError(404);
@@ -42,7 +43,8 @@ const addContact = async (req, res) => {
 
 const deleteContact = async (req, res) => {
 	const { id } = req.params;
-	const element = await Contact.findByIdAndDelete(id);
+	const { _id } = req.user;
+	const element = await Contact.findOneAndDelete({ _id: id, owner: _id });
 	if (!element) {
 		throw HttpError(404);
 	}
