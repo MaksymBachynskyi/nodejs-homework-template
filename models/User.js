@@ -22,6 +22,14 @@ const userSchema = new Schema(
 			type: String,
 			required: true,
 		},
+		verify: {
+			type: Boolean,
+			default: false,
+		},
+		verificationToken: {
+			type: String,
+			// required: [true, 'Verify token is required'],
+		},
 	},
 	{ versionKey: false, timestamps: true }
 );
@@ -37,6 +45,15 @@ export const userSingUpOrIn = Joi.object({
 	password: Joi.string().required().min(4),
 });
 
+export const userEmailSchema = Joi.object({
+	email: Joi.string()
+		.email({
+			minDomainSegments: 2,
+			tlds: { allow: ['com', 'net'] },
+		})
+		.messages({ 'any.required': 'missing required email field' })
+		.required(),
+});
 userSchema.post('save', (error, data, next) => {
 	error.status = 400;
 	next();
